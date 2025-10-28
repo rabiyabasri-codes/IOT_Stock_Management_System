@@ -1,0 +1,542 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - IoT Stock Monitor{% endblock %}
+
+{% block content %}
+<div class="container">
+    <div class="row">
+        <div class="col-12">
+            <div class="main-container">
+                <div class="text-center mb-4">
+                    <h2 class="fw-bold">
+                        <i class="fas fa-cog me-2"></i>Personalized Settings
+                    </h2>
+                    <p class="text-muted">Configure your cryptocurrency monitoring and ESP32 output</p>
+                </div>
+                
+                <form method="POST" id="settingsForm">
+                    <input type="hidden" name="csrf_token" value="{{ csrf_token() }}"/>
+                    
+                    <!-- Coin Selection Section -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-coins me-2"></i>Cryptocurrency Selection
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>Available Cryptocurrencies</h6>
+                                            <div id="availableCoins" class="mb-3">
+                                                <div class="text-center py-3">
+                                                    <div class="spinner-border text-primary" role="status">
+                                                        <span class="visually-hidden">Loading...</span>
+                                                    </div>
+                                                    <p class="text-muted mt-2">Loading cryptocurrencies...</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>Your Selected Coins</h6>
+                                            <div id="selectedCoins" class="border rounded p-3" style="min-height: 200px;">
+                                                <p class="text-muted text-center">No coins selected</p>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Personalized Output Settings -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-microchip me-2"></i>ESP32 Output Settings
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>LED Control</h6>
+                                            <div class="mb-3">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="enable_led" name="enable_led" checked>
+                                                    <label class="form-check-label" for="enable_led">
+                                                        Enable LED Output
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="led_brightness" class="form-label">
+                                                    LED Brightness: <span id="brightnessValue">80%</span>
+                                                </label>
+                                                <input type="range" class="form-range" id="led_brightness" name="led_brightness" 
+                                                       min="10" max="100" value="80" step="5">
+                                                <div class="form-text">Adjust LED brightness (10% - 100%)</div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="led_blink_speed" class="form-label">
+                                                    LED Blink Speed: <span id="blinkSpeedValue">500ms</span>
+                                                </label>
+                                                <input type="range" class="form-range" id="led_blink_speed" name="led_blink_speed" 
+                                                       min="100" max="5000" value="500" step="100">
+                                                <div class="form-text">Control how fast LEDs blink (100ms - 5s)</div>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="col-md-6">
+                                            <h6>Buzzer Control</h6>
+                                            <div class="mb-3">
+                                                <div class="form-check form-switch">
+                                                    <input class="form-check-input" type="checkbox" id="enable_buzzer" name="enable_buzzer" checked>
+                                                    <label class="form-check-label" for="enable_buzzer">
+                                                        Enable Buzzer Output
+                                                    </label>
+                                                </div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="buzzer_volume" class="form-label">
+                                                    Buzzer Volume: <span id="volumeValue">70%</span>
+                                                </label>
+                                                <input type="range" class="form-range" id="buzzer_volume" name="buzzer_volume" 
+                                                       min="0" max="100" value="70" step="5">
+                                                <div class="form-text">Adjust buzzer volume (0% - 100%)</div>
+                                            </div>
+                                            
+                                            <div class="mb-3">
+                                                <label for="buzzer_duration" class="form-label">
+                                                    Buzzer Duration: <span id="durationValue">1000ms</span>
+                                                </label>
+                                                <input type="range" class="form-range" id="buzzer_duration" name="buzzer_duration" 
+                                                       min="100" max="10000" value="1000" step="100">
+                                                <div class="form-text">Control how long buzzer sounds (100ms - 10s)</div>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- ESP32 Connection Status -->
+                    <div class="row mb-4">
+                        <div class="col-12">
+                            <div class="card">
+                                <div class="card-header">
+                                    <h5 class="mb-0">
+                                        <i class="fas fa-microchip me-2"></i>ESP32 Connection Status
+                                    </h5>
+                                </div>
+                                <div class="card-body">
+                                    <div class="row">
+                                        <div class="col-md-6">
+                                            <h6>Connection Status</h6>
+                                            <div class="d-flex align-items-center mb-3">
+                                                <span class="badge bg-{{ 'success' if current_user.esp32_connected else 'danger' }} me-2">
+                                                    {{ 'Connected' if current_user.esp32_connected else 'Disconnected' }}
+                                                </span>
+                                                <span class="text-muted">
+                                                    {{ 'ESP32 is connected and ready' if current_user.esp32_connected else 'Connect your ESP32 to start monitoring' }}
+                                                </span>
+                                            </div>
+                                        </div>
+                                        <div class="col-md-6">
+                                            <h6>Last Seen</h6>
+                                            <p class="text-muted">
+                                                {% if current_user.esp32_last_seen %}
+                                                    {{ current_user.esp32_last_seen.strftime('%Y-%m-%d %H:%M:%S') }}
+                                                {% else %}
+                                                    Never connected
+                                                {% endif %}
+                                            </p>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <button type="submit" class="btn btn-primary btn-lg">
+                            <i class="fas fa-save me-2"></i>Save Settings
+                        </button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+</div>
+
+<script>
+// Load available coins
+function loadAvailableCoins() {
+    fetch('/api/coins')
+        .then(response => response.json())
+        .then(coins => {
+            const container = document.getElementById('availableCoins');
+            container.innerHTML = '';
+            
+            coins.forEach(coin => {
+                const coinDiv = document.createElement('div');
+                coinDiv.className = 'form-check mb-2';
+                coinDiv.innerHTML = `
+                    <input class="form-check-input coin-checkbox" type="checkbox" 
+                           value="${coin.id}" id="coin_${coin.id}">
+                    <label class="form-check-label" for="coin_${coin.id}">
+                        <strong>${coin.symbol}</strong> - ${coin.name}
+                        <small class="text-muted d-block">$${coin.current_price.toFixed(2)}</small>
+                    </label>
+                `;
+                container.appendChild(coinDiv);
+            });
+            
+            // Add event listeners
+            document.querySelectorAll('.coin-checkbox').forEach(checkbox => {
+                checkbox.addEventListener('change', handleCoinSelection);
+            });
+        })
+        .catch(error => {
+            console.error('Error loading coins:', error);
+            document.getElementById('availableCoins').innerHTML = 
+                '<p class="text-danger">Error loading cryptocurrencies</p>';
+        });
+}
+
+// Handle coin selection
+function handleCoinSelection(event) {
+    const coinId = event.target.value;
+    const isChecked = event.target.checked;
+    
+    if (isChecked) {
+        addCoinToSelection(coinId);
+    } else {
+        removeCoinFromSelection(coinId);
+    }
+}
+
+// Add coin to selection
+function addCoinToSelection(coinId) {
+    const container = document.getElementById('selectedCoins');
+    
+    // Get coin info
+    const coinCheckbox = document.getElementById(`coin_${coinId}`);
+    const coinLabel = coinCheckbox.nextElementSibling;
+    const coinName = coinLabel.textContent.split(' - ')[1];
+    const coinSymbol = coinLabel.textContent.split(' - ')[0].replace('**', '').replace('**', '');
+    
+    // Create coin selection div
+    const coinDiv = document.createElement('div');
+    coinDiv.className = 'border rounded p-3 mb-2';
+    coinDiv.id = `selected_${coinId}`;
+    coinDiv.innerHTML = `
+        <div class="row align-items-center">
+            <div class="col-md-4">
+                <strong>${coinSymbol}</strong> - ${coinName}
+            </div>
+                                            <div class="col-md-4">
+                                                <label class="form-label small">Price Threshold ($)</label>
+                                                <input type="number" class="form-control form-control-sm" 
+                                                       name="threshold_${coinId}" value="50000" min="0.01" step="0.01">
+                                            </div>
+            <div class="col-md-3">
+                <div class="form-check">
+                    <input class="form-check-input" type="checkbox" 
+                           name="invested_${coinId}" id="invested_${coinId}">
+                    <label class="form-check-label small" for="invested_${coinId}">
+                        I'm invested
+                    </label>
+                </div>
+            </div>
+            <div class="col-md-1">
+                <button type="button" class="btn btn-sm btn-outline-danger" 
+                        onclick="removeCoinFromSelection('${coinId}')">
+                    <i class="fas fa-times"></i>
+                </button>
+            </div>
+        </div>
+    `;
+    
+    container.appendChild(coinDiv);
+    
+    // Update container message
+    if (container.querySelector('.text-muted')) {
+        container.querySelector('.text-muted').remove();
+    }
+}
+
+// Remove coin from selection
+function removeCoinFromSelection(coinId) {
+    const coinDiv = document.getElementById(`selected_${coinId}`);
+    if (coinDiv) {
+        coinDiv.remove();
+    }
+    
+    // Uncheck the checkbox
+    const checkbox = document.getElementById(`coin_${coinId}`);
+    if (checkbox) {
+        checkbox.checked = false;
+    }
+    
+    // Show message if no coins selected
+    const container = document.getElementById('selectedCoins');
+    if (container.children.length === 0) {
+        container.innerHTML = '<p class="text-muted text-center">No coins selected</p>';
+    }
+}
+
+// Update slider values
+document.getElementById('led_brightness').addEventListener('input', function() {
+    document.getElementById('brightnessValue').textContent = this.value + '%';
+});
+
+document.getElementById('led_blink_speed').addEventListener('input', function() {
+    document.getElementById('blinkSpeedValue').textContent = this.value + 'ms';
+});
+
+document.getElementById('buzzer_volume').addEventListener('input', function() {
+    document.getElementById('volumeValue').textContent = this.value + '%';
+});
+
+document.getElementById('buzzer_duration').addEventListener('input', function() {
+    document.getElementById('durationValue').textContent = this.value + 'ms';
+});
+
+// Auto-Save Functionality
+let autoSaveTimeout;
+const AUTO_SAVE_DELAY = 1000; // 1 second delay
+
+function autoSaveSetting(type, value) {
+    // Clear existing timeout
+    clearTimeout(autoSaveTimeout);
+    
+    // Set new timeout
+    autoSaveTimeout = setTimeout(() => {
+        // Send via WebSocket for real-time updates
+        if (typeof socket !== 'undefined') {
+            socket.emit('auto_save_request', {
+                type: type,
+                value: value
+            });
+        }
+        
+        // Also send via API as backup
+        fetch('/api/auto-save-settings', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({
+                type: type,
+                value: value
+            })
+        })
+        .then(response => response.json())
+        .then(data => {
+            if (data.success) {
+                showAutoSaveIndicator(type, value);
+            }
+        })
+        .catch(error => {
+            console.error('Auto-save error:', error);
+        });
+    }, AUTO_SAVE_DELAY);
+}
+
+function showAutoSaveIndicator(type, value) {
+    // Create or update auto-save indicator
+    let indicator = document.getElementById('autoSaveIndicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'autoSaveIndicator';
+        indicator.className = 'position-fixed top-0 end-0 p-3';
+        indicator.style.zIndex = '9999';
+        document.body.appendChild(indicator);
+    }
+    
+    indicator.innerHTML = `
+        <div class="alert alert-success alert-dismissible fade show" role="alert">
+            <i class="fas fa-check-circle me-2"></i>
+            Auto-saved: ${type} = ${value}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // Auto-hide after 3 seconds
+    setTimeout(() => {
+        if (indicator) {
+            indicator.innerHTML = '';
+        }
+    }, 3000);
+}
+
+// Enhanced event listeners with auto-save
+document.getElementById('led_brightness').addEventListener('input', function() {
+    const value = this.value;
+    document.getElementById('brightnessValue').textContent = value + '%';
+    updateLEDPreview();
+    autoSaveSetting('led_brightness', value);
+});
+
+document.getElementById('led_blink_speed').addEventListener('input', function() {
+    const value = this.value;
+    document.getElementById('blinkSpeedValue').textContent = value + 'ms';
+    updateLEDPreview();
+    autoSaveSetting('led_blink_speed', value);
+});
+
+document.getElementById('buzzer_volume').addEventListener('input', function() {
+    const value = this.value;
+    document.getElementById('volumeValue').textContent = value + '%';
+    updateBuzzerPreview();
+    autoSaveSetting('buzzer_volume', value);
+});
+
+document.getElementById('buzzer_duration').addEventListener('input', function() {
+    const value = this.value;
+    document.getElementById('durationValue').textContent = value + 'ms';
+    updateBuzzerPreview();
+    autoSaveSetting('buzzer_duration', value);
+});
+
+document.getElementById('enable_led').addEventListener('change', function() {
+    autoSaveSetting('enable_led', this.checked);
+});
+
+document.getElementById('enable_buzzer').addEventListener('change', function() {
+    autoSaveSetting('enable_buzzer', this.checked);
+});
+
+// WebSocket event listeners for real-time updates
+if (typeof socket !== 'undefined') {
+    socket.on('auto_save_confirmed', function(data) {
+        console.log('Auto-save confirmed:', data);
+        showAutoSaveIndicator(data.type, data.value);
+    });
+    
+    socket.on('auto_save_error', function(data) {
+        console.error('Auto-save error:', data.error);
+        showErrorIndicator(data.error);
+    });
+    
+    socket.on('coin_selection_updated', function(data) {
+        console.log('Coin selection updated:', data);
+        // Refresh the selected coins display
+        loadSelectedCoins();
+    });
+    
+    socket.on('live_data_update', function(data) {
+        console.log('Live data update received:', data);
+        // Update UI with live data
+        updateLiveData(data);
+    });
+}
+
+function showErrorIndicator(message) {
+    let indicator = document.getElementById('autoSaveIndicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'autoSaveIndicator';
+        indicator.className = 'position-fixed top-0 end-0 p-3';
+        indicator.style.zIndex = '9999';
+        document.body.appendChild(indicator);
+    }
+    
+    indicator.innerHTML = `
+        <div class="alert alert-danger alert-dismissible fade show" role="alert">
+            <i class="fas fa-exclamation-triangle me-2"></i>
+            Error: ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+}
+
+function updateLiveData(data) {
+    // Update ESP32 connection status
+    if (data.esp32_connected !== undefined) {
+        const esp32Status = document.getElementById('esp32Status');
+        if (esp32Status) {
+            esp32Status.textContent = data.esp32_connected ? 'Connected' : 'Disconnected';
+            esp32Status.className = data.esp32_connected ? 'badge bg-success' : 'badge bg-danger';
+        }
+    }
+    
+    // Update settings values if they changed
+    if (data.led_brightness !== undefined) {
+        const ledBrightness = document.getElementById('led_brightness');
+        if (ledBrightness && ledBrightness.value != data.led_brightness) {
+            ledBrightness.value = data.led_brightness;
+            document.getElementById('brightnessValue').textContent = data.led_brightness + '%';
+        }
+    }
+    
+    if (data.buzzer_volume !== undefined) {
+        const buzzerVolume = document.getElementById('buzzer_volume');
+        if (buzzerVolume && buzzerVolume.value != data.buzzer_volume) {
+            buzzerVolume.value = data.buzzer_volume;
+            document.getElementById('volumeValue').textContent = data.buzzer_volume + '%';
+        }
+    }
+}
+
+// Request live updates on page load
+document.addEventListener('DOMContentLoaded', function() {
+    loadAvailableCoins();
+    
+    // Request live updates from server
+    if (typeof socket !== 'undefined') {
+        socket.emit('request_live_updates');
+    }
+    
+    // Set up periodic refresh of user activity
+    setInterval(() => {
+        fetch('/api/get-user-activity')
+            .then(response => response.json())
+            .then(data => {
+                if (data.activities) {
+                    updateActivityLog(data.activities);
+                }
+            })
+            .catch(error => console.error('Error fetching activity:', error));
+    }, 5000); // Every 5 seconds
+});
+
+function updateActivityLog(activities) {
+    // Create or update activity log display
+    let activityLog = document.getElementById('activityLog');
+    if (!activityLog) {
+        activityLog = document.createElement('div');
+        activityLog.id = 'activityLog';
+        activityLog.className = 'position-fixed bottom-0 start-0 p-3';
+        activityLog.style.zIndex = '9998';
+        activityLog.style.maxWidth = '300px';
+        document.body.appendChild(activityLog);
+    }
+    
+    const recentActivities = activities.slice(0, 3); // Show last 3 activities
+    activityLog.innerHTML = `
+        <div class="card">
+            <div class="card-header">
+                <h6 class="mb-0"><i class="fas fa-history me-2"></i>Recent Activity</h6>
+            </div>
+            <div class="card-body p-2">
+                ${recentActivities.map(activity => `
+                    <div class="small text-muted mb-1">
+                        <i class="fas fa-circle text-success me-1" style="font-size: 6px;"></i>
+                        ${activity.description}
+                    </div>
+                `).join('')}
+            </div>
+        </div>
+    `;
+}
+</script>
+{% endblock %}

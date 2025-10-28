@@ -1,0 +1,658 @@
+{% extends "base.html" %}
+
+{% block title %}Settings - IoT Stock Monitor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="main-container">
+            <div class="text-center mb-4">
+                <h2 class="text-gradient">
+                    <i class="fas fa-cog me-2"></i>Settings
+                </h2>
+                <p class="text-muted">Configure your cryptocurrency monitoring preferences</p>
+            </div>
+            
+            <form method="POST">
+                {{ form.hidden_tag() }}
+                
+                <div class="row">
+                    <!-- Threshold Settings -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-percentage me-2"></i>Threshold Configuration
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    {{ form.threshold.label(class="form-label") }}
+                                    <div class="input-group">
+                                        {{ form.threshold(class="form-control", placeholder="Enter threshold percentage") }}
+                                        <span class="input-group-text">%</span>
+                                    </div>
+                                    {% if form.threshold.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {% for error in form.threshold.errors %}
+                                                <div>{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Price changes above this threshold will trigger LED alerts
+                                    </small>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <h6><i class="fas fa-lightbulb me-2"></i>How it works:</h6>
+                                    <ul class="mb-0 small">
+                                        <li><strong>Above threshold:</strong> Green LED (price up)</li>
+                                        <li><strong>Below -threshold:</strong> Red LED (price down)</li>
+                                        <li><strong>Within threshold:</strong> No LED</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Coin Selection -->
+                    <div class="col-md-6 mb-4">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-coins me-2"></i>Cryptocurrency Selection
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="mb-3">
+                                    {{ form.selected_coins.label(class="form-label") }}
+                                    {{ form.selected_coins(class="form-select", size="8") }}
+                                    {% if form.selected_coins.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {% for error in form.selected_coins.errors %}
+                                                <div>{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        Hold Ctrl/Cmd to select multiple cryptocurrencies
+                                    </small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    {{ form.invested_coins.label(class="form-label") }}
+                                    {{ form.invested_coins(class="form-select", size="6") }}
+                                    {% if form.invested_coins.errors %}
+                                        <div class="text-danger small mt-1">
+                                            {% for error in form.invested_coins.errors %}
+                                                <div>{{ error }}</div>
+                                            {% endfor %}
+                                        </div>
+                                    {% endif %}
+                                    <small class="text-muted">
+                                        <i class="fas fa-info-circle me-1"></i>
+                                        These coins will show blue LED regardless of price movement
+                                    </small>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- LED Preview -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-lightbulb me-2"></i>LED Preview
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-3 mb-3">
+                                        <div class="text-center">
+                                            <div class="led-indicator led-red mb-2"></div>
+                                            <h6>Red LED</h6>
+                                            <small class="text-muted">Price drops below threshold</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <div class="text-center">
+                                            <div class="led-indicator led-green mb-2"></div>
+                                            <h6>Green LED</h6>
+                                            <small class="text-muted">Price rises above threshold</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <div class="text-center">
+                                            <div class="led-indicator led-blue mb-2"></div>
+                                            <h6>Blue LED</h6>
+                                            <small class="text-muted">You have invested in this coin</small>
+                                        </div>
+                                    </div>
+                                    <div class="col-md-3 mb-3">
+                                        <div class="text-center">
+                                            <div class="led-indicator led-off mb-2"></div>
+                                            <h6>No LED</h6>
+                                            <small class="text-muted">Price change within threshold</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Personalized Output Settings -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-sliders-h me-2"></i>Personalized Output Settings
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-lightbulb me-2"></i>LED Settings</h6>
+                                        
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                {{ form.enable_led(class="form-check-input") }}
+                                                {{ form.enable_led.label(class="form-check-label") }}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            {{ form.led_brightness.label(class="form-label") }}
+                                            <div class="d-flex align-items-center">
+                                                <span class="me-2">0%</span>
+                                                {{ form.led_brightness(class="form-range", min="0", max="100", step="1", id="led_brightness") }}
+                                                <span class="ms-2">100%</span>
+                                                <span class="badge bg-primary ms-2" id="brightnessValue">80%</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            {{ form.led_blink_speed.label(class="form-label") }}
+                                            <div class="d-flex align-items-center">
+                                                <span class="me-2">Fast (100ms)</span>
+                                                {{ form.led_blink_speed(class="form-range", min="100", max="2000", step="100", id="led_blink_speed") }}
+                                                <span class="ms-2">Slow (2000ms)</span>
+                                                <span class="badge bg-info ms-2" id="blinkSpeedValue">500ms</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <h6><i class="fas fa-volume-up me-2"></i>Buzzer Settings</h6>
+                                        
+                                        <div class="mb-3">
+                                            <div class="form-check">
+                                                {{ form.enable_buzzer(class="form-check-input") }}
+                                                {{ form.enable_buzzer.label(class="form-check-label") }}
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            {{ form.buzzer_volume.label(class="form-label") }}
+                                            <div class="d-flex align-items-center">
+                                                <span class="me-2">Silent (0%)</span>
+                                                {{ form.buzzer_volume(class="form-range", min="0", max="100", step="1", id="buzzer_volume") }}
+                                                <span class="ms-2">Loud (100%)</span>
+                                                <span class="badge bg-warning ms-2" id="volumeValue">70%</span>
+                                            </div>
+                                        </div>
+                                        
+                                        <div class="mb-3">
+                                            {{ form.buzzer_duration.label(class="form-label") }}
+                                            <div class="d-flex align-items-center">
+                                                <span class="me-2">Short (100ms)</span>
+                                                {{ form.buzzer_duration(class="form-range", min="100", max="10000", step="100", id="buzzer_duration") }}
+                                                <span class="ms-2">Long (10s)</span>
+                                                <span class="badge bg-success ms-2" id="durationValue">1000ms (1.0s)</span>
+                                            </div>
+                                        </div>
+                                    </div>
+                                </div>
+                                
+                                <div class="alert alert-info">
+                                    <h6><i class="fas fa-info-circle me-2"></i>Personalized Output Features:</h6>
+                                    <ul class="mb-0 small">
+                                        <li><strong>LED Control:</strong> Enable/disable LED output and adjust brightness</li>
+                                        <li><strong>Buzzer Control:</strong> Enable/disable buzzer and adjust volume/duration</li>
+                                        <li><strong>Blink Speed:</strong> Control how fast LEDs blink for alerts</li>
+                                        <li><strong>User-Specific:</strong> Each user can have different output preferences</li>
+                                    </ul>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- ESP32 Configuration -->
+                <div class="row mb-4">
+                    <div class="col-12">
+                        <div class="card">
+                            <div class="card-header">
+                                <h5 class="mb-0">
+                                    <i class="fas fa-microchip me-2"></i>ESP32 Configuration
+                                </h5>
+                            </div>
+                            <div class="card-body">
+                                <div class="row">
+                                    <div class="col-md-6">
+                                        <h6>Connection Status</h6>
+                                        <div class="d-flex align-items-center mb-3">
+                                            <span class="badge bg-{{ 'success' if current_user.esp32_connected else 'danger' }} me-2">
+                                                {{ 'Connected' if current_user.esp32_connected else 'Disconnected' }}
+                                            </span>
+                                            <small class="text-muted">
+                                                {% if current_user.esp32_last_seen %}
+                                                    Last seen: {{ current_user.esp32_last_seen.strftime('%Y-%m-%d %H:%M:%S') }}
+                                                {% else %}
+                                                    Never connected
+                                                {% endif %}
+                                            </small>
+                                        </div>
+                                        
+                                        <h6>Hardware Pins</h6>
+                                        <ul class="list-unstyled small">
+                                            <li><i class="fas fa-circle text-danger me-2"></i>Red LED: GPIO 2</li>
+                                            <li><i class="fas fa-circle text-success me-2"></i>Green LED: GPIO 4</li>
+                                            <li><i class="fas fa-circle text-primary me-2"></i>Blue LED: GPIO 5</li>
+                                            <li><i class="fas fa-volume-up text-warning me-2"></i>Buzzer: GPIO 18</li>
+                                        </ul>
+                                    </div>
+                                    
+                                    <div class="col-md-6">
+                                        <h6>Server Information</h6>
+                                        <div class="alert alert-info">
+                                            <small>
+                                                <strong>WebSocket URL:</strong><br>
+                                                <code>ws://{{ request.host }}/socket.io/</code><br><br>
+                                                <strong>For ESP32 code:</strong><br>
+                                                Update <code>server_host</code> to:<br>
+                                                <code>{{ request.host.split(':')[0] }}</code>
+                                            </small>
+                                        </div>
+                                        
+                                        <button type="button" class="btn btn-outline-primary btn-sm" onclick="testESP32Connection()">
+                                            <i class="fas fa-wifi me-1"></i>Test ESP32 Connection
+                                        </button>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Save Button -->
+                <div class="text-center">
+                    {{ form.submit(class="btn btn-primary btn-lg px-5") }}
+                </div>
+            </form>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Load available coins
+document.addEventListener('DOMContentLoaded', function() {
+    loadAvailableCoins();
+});
+
+async function loadAvailableCoins() {
+    try {
+        const response = await fetch('/api/coins');
+        const coins = await response.json();
+        
+        const selectedSelect = document.getElementById('selected_coins');
+        const investedSelect = document.getElementById('invested_coins');
+        
+        // Clear existing options
+        selectedSelect.innerHTML = '';
+        investedSelect.innerHTML = '';
+        
+        // Add coins to both select elements
+        coins.forEach(coin => {
+            const option1 = new Option(`${coin.name} (${coin.symbol}) - $${coin.current_price}`, coin.id);
+            const option2 = new Option(`${coin.name} (${coin.symbol})`, coin.id);
+            
+            selectedSelect.add(option1);
+            investedSelect.add(option2);
+        });
+        
+        console.log('Loaded coins:', coins.length);
+    } catch (error) {
+        console.error('Error loading coins:', error);
+    }
+}
+
+function testESP32Connection() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<div class="loading-spinner me-1"></div>Testing...';
+    button.disabled = true;
+    
+    // Simulate ESP32 connection test
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+        showNotification('ESP32 connection test completed', 'info');
+    }, 2000);
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 3000);
+}
+
+// Real-time settings update to ESP32
+function updateESP32Settings() {
+    const settings = {
+        enable_led: document.getElementById('enable_led').checked,
+        enable_buzzer: document.getElementById('enable_buzzer').checked,
+        led_brightness: document.getElementById('led_brightness').value,
+        buzzer_volume: document.getElementById('buzzer_volume').value,
+        buzzer_duration: document.getElementById('buzzer_duration').value,
+        led_blink_speed: document.getElementById('led_blink_speed').value
+    };
+    
+    // Send to server for immediate ESP32 update
+    fetch('/api/update_esp32_settings', {
+        method: 'POST',
+        headers: {
+            'Content-Type': 'application/json'
+        },
+        body: JSON.stringify(settings)
+    })
+    .then(response => response.json())
+    .then(data => {
+        if (data.success) {
+            showNotification('Settings sent to ESP32!', 'success');
+        }
+    })
+    .catch(error => {
+        console.error('Error updating ESP32 settings:', error);
+    });
+}
+
+// Auto-save threshold changes
+document.getElementById('threshold').addEventListener('input', function() {
+    clearTimeout(window.autoSaveTimeout);
+    window.autoSaveTimeout = setTimeout(() => {
+        if (this.value && parseFloat(this.value) > 0) {
+            showNotification('Threshold updated', 'info');
+        }
+    }, 1000);
+});
+
+// Initialize previews on page load
+document.addEventListener('DOMContentLoaded', function() {
+    // Initialize LED preview
+    updateLEDPreview();
+    
+    // Initialize buzzer preview
+    updateBuzzerPreview();
+    
+    // Set initial display values
+    updateBrightnessDisplay(document.getElementById('led_brightness').value);
+    updateVolumeDisplay(document.getElementById('buzzer_volume').value);
+    updateDurationDisplay(document.getElementById('buzzer_duration').value);
+    updateBlinkSpeedDisplay(document.getElementById('led_blink_speed').value);
+});
+
+// Real-time ESP32 settings updates with visual feedback
+document.getElementById('enable_led').addEventListener('change', function() {
+    updateESP32Settings();
+    showSettingFeedback('LED output', this.checked ? 'enabled' : 'disabled');
+    updateLEDPreview();
+});
+
+document.getElementById('enable_buzzer').addEventListener('change', function() {
+    updateESP32Settings();
+    showSettingFeedback('Buzzer output', this.checked ? 'enabled' : 'disabled');
+    updateBuzzerPreview();
+});
+
+document.getElementById('led_brightness').addEventListener('input', function() {
+    updateESP32Settings();
+    showSettingFeedback('LED brightness', this.value + '%');
+    updateLEDPreview();
+    updateBrightnessDisplay(this.value);
+});
+
+document.getElementById('buzzer_volume').addEventListener('input', function() {
+    updateESP32Settings();
+    showSettingFeedback('Buzzer volume', this.value + '%');
+    updateBuzzerPreview();
+    updateVolumeDisplay(this.value);
+});
+
+document.getElementById('buzzer_duration').addEventListener('input', function() {
+    updateESP32Settings();
+    showSettingFeedback('Buzzer duration', this.value + 'ms');
+    updateBuzzerPreview();
+    updateDurationDisplay(this.value);
+});
+
+document.getElementById('led_blink_speed').addEventListener('input', function() {
+    updateESP32Settings();
+    showSettingFeedback('LED blink speed', this.value + 'ms');
+    updateLEDPreview();
+    updateBlinkSpeedDisplay(this.value);
+});
+
+// Show setting feedback
+function showSettingFeedback(setting, value) {
+    const feedback = document.createElement('div');
+    feedback.className = 'alert alert-success alert-dismissible fade show position-fixed';
+    feedback.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    feedback.innerHTML = `
+        <i class="fas fa-check-circle me-2"></i>
+        <strong>${setting}</strong> updated to <strong>${value}</strong> on ESP32
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(feedback);
+    
+    // Auto-remove after 3 seconds
+    setTimeout(() => {
+        if (feedback.parentNode) {
+            feedback.parentNode.removeChild(feedback);
+        }
+    }, 3000);
+}
+
+// Update brightness display
+function updateBrightnessDisplay(value) {
+    const brightnessValue = document.getElementById('brightnessValue');
+    if (brightnessValue) {
+        brightnessValue.textContent = value + '%';
+    }
+}
+
+// Update volume display
+function updateVolumeDisplay(value) {
+    const volumeValue = document.getElementById('volumeValue');
+    if (volumeValue) {
+        volumeValue.textContent = value + '%';
+    }
+}
+
+// Update duration display
+function updateDurationDisplay(value) {
+    const durationValue = document.getElementById('durationValue');
+    if (durationValue) {
+        const seconds = (value / 1000).toFixed(1);
+        durationValue.textContent = value + 'ms (' + seconds + 's)';
+    }
+}
+
+// Update blink speed display
+function updateBlinkSpeedDisplay(value) {
+    const blinkSpeedValue = document.getElementById('blinkSpeedValue');
+    if (blinkSpeedValue) {
+        blinkSpeedValue.textContent = value + 'ms';
+    }
+}
+
+// Update LED preview
+function updateLEDPreview() {
+    const enableLED = document.getElementById('enable_led').checked;
+    const brightness = document.getElementById('led_brightness').value;
+    const blinkSpeed = document.getElementById('led_blink_speed').value;
+    
+    // Create or update LED preview
+    let preview = document.getElementById('ledPreview');
+    if (!preview) {
+        preview = document.createElement('div');
+        preview.id = 'ledPreview';
+        preview.className = 'mt-3 p-3 border rounded';
+        preview.innerHTML = `
+            <h6><i class="fas fa-lightbulb me-2"></i>LED Preview</h6>
+            <div class="d-flex align-items-center">
+                <div id="ledIndicator" class="me-3" style="width: 20px; height: 20px; border-radius: 50%; background: #ccc;"></div>
+                <span id="ledStatus">LED Off</span>
+            </div>
+        `;
+        document.querySelector('.form-group:has(#led_brightness)').appendChild(preview);
+    }
+    
+    const ledIndicator = document.getElementById('ledIndicator');
+    const ledStatus = document.getElementById('ledStatus');
+    
+    if (enableLED) {
+        const opacity = brightness / 100;
+        ledIndicator.style.background = `rgba(0, 255, 0, ${opacity})`;
+        ledIndicator.style.boxShadow = `0 0 10px rgba(0, 255, 0, ${opacity})`;
+        ledStatus.textContent = `LED On (${brightness}% brightness, ${blinkSpeed}ms blink)`;
+        
+        // Animate blinking
+        if (parseInt(blinkSpeed) < 1000) {
+            ledIndicator.style.animation = `blink ${blinkSpeed}ms infinite`;
+        } else {
+            ledIndicator.style.animation = 'none';
+        }
+    } else {
+        ledIndicator.style.background = '#ccc';
+        ledIndicator.style.boxShadow = 'none';
+        ledIndicator.style.animation = 'none';
+        ledStatus.textContent = 'LED Off';
+    }
+}
+
+// Update buzzer preview
+function updateBuzzerPreview() {
+    const enableBuzzer = document.getElementById('enable_buzzer').checked;
+    const volume = document.getElementById('buzzer_volume').value;
+    const duration = document.getElementById('buzzer_duration').value;
+    
+    // Create or update buzzer preview
+    let preview = document.getElementById('buzzerPreview');
+    if (!preview) {
+        preview = document.createElement('div');
+        preview.id = 'buzzerPreview';
+        preview.className = 'mt-3 p-3 border rounded';
+        preview.innerHTML = `
+            <h6><i class="fas fa-volume-up me-2"></i>Buzzer Preview</h6>
+            <div class="d-flex align-items-center">
+                <div id="buzzerIndicator" class="me-3" style="width: 20px; height: 20px; border-radius: 50%; background: #ccc;"></div>
+                <span id="buzzerStatus">Buzzer Off</span>
+                <button id="testBuzzer" class="btn btn-sm btn-outline-primary ms-3">
+                    <i class="fas fa-play"></i> Test
+                </button>
+            </div>
+        `;
+        document.querySelector('.form-group:has(#buzzer_volume)').appendChild(preview);
+        
+        // Add test buzzer functionality
+        document.getElementById('testBuzzer').addEventListener('click', function() {
+            testBuzzer();
+        });
+    }
+    
+    const buzzerIndicator = document.getElementById('buzzerIndicator');
+    const buzzerStatus = document.getElementById('buzzerStatus');
+    
+    if (enableBuzzer) {
+        const opacity = volume / 100;
+        buzzerIndicator.style.background = `rgba(255, 0, 0, ${opacity})`;
+        buzzerIndicator.style.boxShadow = `0 0 10px rgba(255, 0, 0, ${opacity})`;
+        buzzerStatus.textContent = `Buzzer On (${volume}% volume, ${duration}ms duration)`;
+    } else {
+        buzzerIndicator.style.background = '#ccc';
+        buzzerIndicator.style.boxShadow = 'none';
+        buzzerStatus.textContent = 'Buzzer Off';
+    }
+}
+
+// Test buzzer function
+function testBuzzer() {
+    const volume = document.getElementById('buzzer_volume').value;
+    const duration = document.getElementById('buzzer_duration').value;
+    
+    // Create audio context for buzzer simulation
+    const audioContext = new (window.AudioContext || window.webkitAudioContext)();
+    const oscillator = audioContext.createOscillator();
+    const gainNode = audioContext.createGain();
+    
+    oscillator.connect(gainNode);
+    gainNode.connect(audioContext.destination);
+    
+    oscillator.frequency.setValueAtTime(800, audioContext.currentTime);
+    gainNode.gain.setValueAtTime(volume / 100, audioContext.currentTime);
+    
+    oscillator.start();
+    oscillator.stop(audioContext.currentTime + (duration / 1000));
+    
+    // Visual feedback
+    const buzzerIndicator = document.getElementById('buzzerIndicator');
+    buzzerIndicator.style.animation = 'pulse 0.1s infinite';
+    setTimeout(() => {
+        buzzerIndicator.style.animation = 'none';
+    }, duration);
+}
+
+// Add CSS for animations
+const style = document.createElement('style');
+style.textContent = `
+    @keyframes blink {
+        0%, 50% { opacity: 1; }
+        51%, 100% { opacity: 0.3; }
+    }
+    
+    @keyframes pulse {
+        0% { transform: scale(1); }
+        50% { transform: scale(1.2); }
+        100% { transform: scale(1); }
+    }
+    
+    .led-preview, .buzzer-preview {
+        transition: all 0.3s ease;
+    }
+`;
+document.head.appendChild(style);
+</script>
+{% endblock %}

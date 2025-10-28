@@ -1,0 +1,1098 @@
+{% extends "base.html" %}
+
+{% block title %}Dashboard - IoT Stock Monitor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="main-container">
+            <!-- Welcome Header -->
+            <div class="text-center mb-5">
+                <h1 class="display-4 text-gradient">
+                    <i class="fas fa-tachometer-alt me-3"></i>Dashboard
+                </h1>
+                <p class="lead text-muted">Welcome back, {{ user.username }}! Monitor your cryptocurrency investments in real-time.</p>
+            </div>
+            
+            <!-- Stats Cards -->
+            <div class="row mb-5">
+                <div class="col-md-3 mb-3">
+                    <div class="stats-card">
+                        <div class="stats-number" id="totalCoins">0</div>
+                        <div class="stats-label">Monitored Coins</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stats-card">
+                        <div class="stats-number" id="investedCoins">0</div>
+                        <div class="stats-label">Invested Coins</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stats-card">
+                        <div class="stats-number" id="thresholdValue">{{ user.threshold }}%</div>
+                        <div class="stats-label">Threshold</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stats-card">
+                        <div class="stats-number" id="esp32Status">
+                            <i class="fas fa-microchip {{ 'text-success' if user.esp32_connected else 'text-danger' }}"></i>
+                        </div>
+                        <div class="stats-label">ESP32 Status</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Chart Section -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header d-flex justify-content-between align-items-center">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-line me-2"></i>Live Market Charts
+                            </h5>
+                            <div class="btn-group" role="group">
+                                <button type="button" class="btn btn-sm btn-outline-primary active" data-timeframe="1d">1D</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-timeframe="7d">7D</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-timeframe="30d">30D</button>
+                                <button type="button" class="btn btn-sm btn-outline-primary" data-timeframe="90d">90D</button>
+                            </div>
+                        </div>
+                        <div class="card-body">
+                            <div id="chartContainer" style="height: 400px;">
+                                <div class="text-center py-5">
+                                    <div class="spinner-border text-primary" role="status">
+                                        <span class="visually-hidden">Loading charts...</span>
+                                    </div>
+                                    <p class="text-muted mt-2">Loading market charts...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Quick Actions -->
+            <div class="row mb-4">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-bolt me-2"></i>Quick Actions
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-3 mb-2">
+                                    <a href="{{ url_for('settings') }}" class="btn btn-primary w-100">
+                                        <i class="fas fa-cog me-2"></i>Configure Settings
+                                    </a>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <button class="btn btn-success w-100" onclick="refreshMarketData()">
+                                        <i class="fas fa-sync-alt me-2"></i>Refresh Data
+                                    </button>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <button class="btn btn-info w-100" onclick="testESP32Connection()">
+                                        <i class="fas fa-wifi me-2"></i>Test ESP32
+                                    </button>
+                                </div>
+                                <div class="col-md-3 mb-2">
+                                    <button class="btn btn-warning w-100" onclick="exportData()">
+                                        <i class="fas fa-download me-2"></i>Export Data
+                                    </button>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Market Data Display -->
+            <div class="row">
+                <div class="col-12">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-line me-2"></i>Real-time Market Data
+                                <span class="badge bg-success ms-2" id="connectionStatus">Connected</span>
+                                <span class="badge bg-info ms-1" id="dataStatus">
+                                    <i class="fas fa-circle me-1 live-indicator" id="liveIndicator"></i>Live
+                                </span>
+                                <span class="badge bg-warning ms-1" id="testingMode">
+                                    <i class="fas fa-flask me-1"></i>Testing Mode
+                                </span>
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="marketData">
+                                <div class="text-center py-5">
+                                    <div class="spinner-border text-primary me-2" role="status">
+                                        <span class="visually-hidden">Loading...</span>
+                                    </div>
+                                    <span class="text-muted">Loading market data...</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- LED Status Panel -->
+            <div class="row mt-4">
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-lightbulb me-2"></i>LED Status
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-6 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <span class="led-indicator led-red me-3"></span>
+                                        <div>
+                                            <strong>Red LED</strong><br>
+                                            <small class="text-muted">Market down below threshold</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <span class="led-indicator led-green me-3"></span>
+                                        <div>
+                                            <strong>Green LED</strong><br>
+                                            <small class="text-muted">Market up above threshold</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <span class="led-indicator led-blue me-3"></span>
+                                        <div>
+                                            <strong>Blue LED</strong><br>
+                                            <small class="text-muted">You have invested in this coin</small>
+                                        </div>
+                                    </div>
+                                </div>
+                                <div class="col-6 mb-3">
+                                    <div class="d-flex align-items-center">
+                                        <span class="led-indicator led-off me-3"></span>
+                                        <div>
+                                            <strong>No LED</strong><br>
+                                            <small class="text-muted">Price change within threshold</small>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="col-md-6">
+                    <div class="card">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-info-circle me-2"></i>System Status
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div id="systemStatus">
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>WebSocket Connection:</span>
+                                    <span class="badge bg-success" id="wsStatus">Connected</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>ESP32 Connection:</span>
+                                    <span class="badge bg-danger" id="esp32StatusBadge">Disconnected</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>Market Data:</span>
+                                    <span class="badge bg-info" id="marketStatus">Active</span>
+                                </div>
+                                <div class="d-flex justify-content-between align-items-center mb-2">
+                                    <span>Last Update:</span>
+                                    <span class="text-muted" id="lastUpdate">Never</span>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Socket.IO connection
+const socket = io();
+
+// Global variables
+let marketData = {};
+let lastUpdateTime = null;
+let esp32Connected = false;
+
+// Initialize dashboard
+document.addEventListener('DOMContentLoaded', function() {
+    updateStats();
+    setupSocketListeners();
+    loadMarketData();
+    checkESP32Connection();
+});
+
+// Check ESP32 connection and show popup if not connected
+function checkESP32Connection() {
+    // ESP32 connection check disabled for testing
+    // if (!esp32Connected) {
+    //     showESP32RequiredPopup();
+    // }
+}
+
+// Show ESP32 required popup
+function showESP32RequiredPopup() {
+    const popup = document.createElement('div');
+    popup.id = 'esp32-required-popup';
+    popup.innerHTML = `
+        <div class="modal fade show" style="display: block; background: rgba(0,0,0,0.8);" tabindex="-1">
+            <div class="modal-dialog modal-dialog-centered">
+                <div class="modal-content">
+                    <div class="modal-header bg-danger text-white">
+                        <h5 class="modal-title">
+                            <i class="fas fa-microchip me-2"></i>ESP32 Connection Required
+                        </h5>
+                    </div>
+                    <div class="modal-body text-center">
+                        <div class="mb-4">
+                            <i class="fas fa-exclamation-triangle fa-4x text-warning mb-3"></i>
+                            <h4>ESP32 Module Not Connected</h4>
+                            <p class="text-muted">Please connect your ESP32 module to continue using the IoT Stock Monitor.</p>
+                        </div>
+                        
+                        <div class="alert alert-info">
+                            <h6><i class="fas fa-info-circle me-2"></i>How to connect ESP32:</h6>
+                            <ol class="text-start">
+                                <li>Upload the ESP32 code to your device</li>
+                                <li>Ensure WiFi credentials are correct</li>
+                                <li>Update server IP address in ESP32 code</li>
+                                <li>Power on your ESP32 device</li>
+                            </ol>
+                        </div>
+                        
+                        <div class="d-flex justify-content-center align-items-center">
+                            <div class="spinner-border text-primary me-3" role="status">
+                                <span class="visually-hidden">Waiting for ESP32...</span>
+                            </div>
+                            <span class="text-muted">Waiting for ESP32 connection...</span>
+                        </div>
+                    </div>
+                    <div class="modal-footer">
+                        <button type="button" class="btn btn-outline-secondary" onclick="refreshConnection()">
+                            <i class="fas fa-sync-alt me-1"></i>Refresh Connection
+                        </button>
+                        <button type="button" class="btn btn-primary" onclick="openSettings()">
+                            <i class="fas fa-cog me-1"></i>Check Settings
+                        </button>
+                    </div>
+                </div>
+            </div>
+        </div>
+    `;
+    
+    document.body.appendChild(popup);
+    
+    // Disable all interactive elements
+    disableAllInteractions();
+}
+
+// Hide ESP32 required popup
+function hideESP32RequiredPopup() {
+    const popup = document.getElementById('esp32-required-popup');
+    if (popup) {
+        popup.remove();
+    }
+    enableAllInteractions();
+}
+
+// Disable all interactions
+function disableAllInteractions() {
+    const interactiveElements = document.querySelectorAll('button, input, select, a');
+    interactiveElements.forEach(element => {
+        element.style.pointerEvents = 'none';
+        element.style.opacity = '0.5';
+    });
+}
+
+// Enable all interactions
+function enableAllInteractions() {
+    const interactiveElements = document.querySelectorAll('button, input, select, a');
+    interactiveElements.forEach(element => {
+        element.style.pointerEvents = 'auto';
+        element.style.opacity = '1';
+    });
+}
+
+// Refresh connection
+function refreshConnection() {
+    showNotification('Checking ESP32 connection...', 'info');
+    // Trigger a connection check
+    socket.emit('check_esp32_connection');
+}
+
+// Open settings
+function openSettings() {
+    window.location.href = '/settings';
+}
+
+// Setup Socket.IO event listeners
+function setupSocketListeners() {
+    socket.on('connect', function() {
+        console.log('Connected to server');
+        updateConnectionStatus('Connected', 'success');
+    });
+    
+    socket.on('disconnect', function() {
+        console.log('Disconnected from server');
+        updateConnectionStatus('Disconnected', 'danger');
+    });
+    
+    socket.on('market_update', function(data) {
+        console.log('Market update received:', data);
+        if (data.user_id === {{ user.id }}) {
+            updateMarketDisplay(data);
+            lastUpdateTime = new Date();
+            document.getElementById('lastUpdate').textContent = lastUpdateTime.toLocaleTimeString();
+            
+            // Animate live indicator
+            animateLiveIndicator();
+        }
+    });
+    
+    socket.on('esp32_status', function(data) {
+        esp32Connected = data.connected;
+        updateESP32Status(data.connected);
+        
+        if (data.connected) {
+            hideESP32RequiredPopup();
+            showNotification('ESP32 connected successfully!', 'success');
+        } else {
+            checkESP32Connection();
+        }
+    });
+}
+
+// Update market data display
+function updateMarketDisplay(data) {
+    const marketDataDiv = document.getElementById('marketData');
+    const signals = data.signals;
+    
+    // ESP32 connection check disabled for testing
+    // if (!esp32Connected) {
+    //     marketDataDiv.innerHTML = `
+    //         <div class="text-center py-5">
+    //             <i class="fas fa-microchip fa-3x text-warning mb-3"></i>
+    //             <h5 class="text-warning">ESP32 Not Connected</h5>
+    //             <p class="text-muted">Please connect your ESP32 module to view real-time market data.</p>
+    //             <button class="btn btn-warning" onclick="refreshConnection()">
+    //                 <i class="fas fa-sync-alt me-2"></i>Check Connection
+    //             </button>
+    //         </div>
+    //     `;
+    //     return;
+    // }
+    
+    if (!signals || Object.keys(signals).length === 0) {
+        marketDataDiv.innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                <h5 class="text-muted">No market data available</h5>
+                <p class="text-muted">Configure your settings to start monitoring cryptocurrencies.</p>
+                <a href="{{ url_for('settings') }}" class="btn btn-primary">
+                    <i class="fas fa-cog me-2"></i>Configure Settings
+                </a>
+            </div>
+        `;
+        return;
+    }
+    
+    let html = '<div class="row">';
+    
+    Object.entries(signals).forEach(([coinId, signal]) => {
+        const priceClass = signal.change_24h > 0 ? 'price-positive' : 
+                          signal.change_24h < 0 ? 'price-negative' : 'price-neutral';
+        
+        const changeIcon = signal.change_24h > 0 ? 'fa-arrow-up' : 
+                          signal.change_24h < 0 ? 'fa-arrow-down' : 'fa-minus';
+        
+        html += `
+            <div class="col-md-6 col-lg-4 mb-3">
+                <div class="coin-card">
+                    <div class="d-flex justify-content-between align-items-center mb-3">
+                        <div>
+                            <h6 class="mb-1">${coinId.charAt(0).toUpperCase() + coinId.slice(1)}</h6>
+                            <small class="text-muted">${coinId.toUpperCase()}</small>
+                        </div>
+                        <div class="text-end">
+                            <div class="led-indicator led-${signal.led_color}"></div>
+                        </div>
+                    </div>
+                    
+                    <div class="row text-center">
+                        <div class="col-6">
+                            <div class="mb-2">
+                                <small class="text-muted">Price</small>
+                                <div class="fw-bold">$${signal.price.toFixed(2)}</div>
+                            </div>
+                        </div>
+                        <div class="col-6">
+                            <div class="mb-2">
+                                <small class="text-muted">24h Change</small>
+                                <div class="${priceClass}">
+                                    <i class="fas ${changeIcon}"></i> ${Math.abs(signal.change_24h).toFixed(2)}%
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <div class="text-center">
+                        <span class="status-badge badge-${getSignalColor(signal.signal)}">${signal.signal.toUpperCase()}</span>
+                    </div>
+                    
+                    <small class="text-muted d-block text-center mt-2">
+                        Updated: ${new Date(signal.timestamp).toLocaleTimeString()}
+                    </small>
+                </div>
+            </div>
+        `;
+    });
+    
+    html += '</div>';
+    marketDataDiv.innerHTML = html;
+}
+
+// Get signal color for badge
+function getSignalColor(signal) {
+    switch(signal) {
+        case 'up': return 'success';
+        case 'down': return 'danger';
+        case 'invested': return 'primary';
+        case 'neutral': return 'secondary';
+        default: return 'secondary';
+    }
+}
+
+// Update connection status
+function updateConnectionStatus(status, type) {
+    const statusElement = document.getElementById('connectionStatus');
+    statusElement.textContent = status;
+    statusElement.className = `badge bg-${type} ms-2`;
+    
+    const wsStatus = document.getElementById('wsStatus');
+    wsStatus.textContent = status;
+    wsStatus.className = `badge bg-${type}`;
+}
+
+// Update ESP32 status
+function updateESP32Status(connected) {
+    const statusElement = document.getElementById('esp32Status');
+    const badgeElement = document.getElementById('esp32StatusBadge');
+    
+    if (connected) {
+        statusElement.className = 'fas fa-microchip text-success';
+        badgeElement.textContent = 'Connected';
+        badgeElement.className = 'badge bg-success';
+    } else {
+        statusElement.className = 'fas fa-microchip text-danger';
+        badgeElement.textContent = 'Disconnected';
+        badgeElement.className = 'badge bg-danger';
+    }
+}
+
+// Update stats
+function updateStats() {
+    // This would be populated from user settings
+    const selectedCoins = {{ user.get_selected_coins() | tojson }};
+    const investedCoins = {{ user.get_invested_coins() | tojson }};
+    
+    document.getElementById('totalCoins').textContent = selectedCoins.length;
+    document.getElementById('investedCoins').textContent = investedCoins.length;
+}
+
+// Quick action functions
+function refreshMarketData() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<div class="loading-spinner me-2"></div>Refreshing...';
+    button.disabled = true;
+    
+    // Simulate refresh
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+        showNotification('Market data refreshed!', 'success');
+    }, 2000);
+}
+
+function testESP32Connection() {
+    showNotification('Testing ESP32 connection...', 'info');
+    // This would trigger an ESP32 connection test
+}
+
+function exportData() {
+    showNotification('Exporting data...', 'info');
+    // This would export user's market data
+}
+
+// Load initial market data
+function loadMarketData() {
+    console.log('Loading real-time market data...');
+    
+    // Fetch real-time data from API
+    fetch('/api/real-time-data')
+        .then(response => response.json())
+        .then(data => {
+            console.log('Real-time market data:', data);
+            if (data && Object.keys(data).length > 0) {
+                updateMarketDisplay({signals: data});
+            } else {
+                document.getElementById('marketData').innerHTML = `
+                    <div class="text-center py-5">
+                        <i class="fas fa-coins fa-3x text-primary mb-3"></i>
+                        <h5 class="text-primary">No Cryptocurrencies Selected</h5>
+                        <p class="text-muted">Choose cryptocurrencies to monitor and set your price thresholds.</p>
+                        <a href="{{ url_for('settings') }}" class="btn btn-primary btn-lg">
+                            <i class="fas fa-cog me-2"></i>Configure Settings
+                        </a>
+                    </div>
+                `;
+            }
+        })
+        .catch(error => {
+            console.error('Error loading market data:', error);
+            document.getElementById('marketData').innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-wifi fa-3x text-warning mb-3"></i>
+                    <h5 class="text-warning">Connection Issue</h5>
+                    <p class="text-muted">Unable to fetch market data. This might be due to:</p>
+                    <ul class="text-muted text-start d-inline-block">
+                        <li>No cryptocurrencies selected in settings</li>
+                        <li>Internet connection issue</li>
+                        <li>API rate limiting</li>
+                    </ul>
+                    <div class="mt-3">
+                        <a href="{{ url_for('settings') }}" class="btn btn-primary me-2">
+                            <i class="fas fa-cog me-1"></i>Configure Settings
+                        </a>
+                        <button onclick="loadMarketData()" class="btn btn-outline-primary">
+                            <i class="fas fa-sync-alt me-1"></i>Retry
+                        </button>
+                    </div>
+                </div>
+            `;
+        });
+}
+
+// Show notification
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 3000);
+}
+
+// Animate live indicator
+function animateLiveIndicator() {
+    const indicator = document.getElementById('liveIndicator');
+    if (indicator) {
+        indicator.style.color = '#28a745';
+        indicator.style.animation = 'pulse 1s ease-in-out';
+        
+        setTimeout(() => {
+            indicator.style.animation = '';
+        }, 1000);
+    }
+}
+
+// Update ESP32 status on page load (testing mode - always connected)
+updateESP32Status(true);
+
+// Chart functionality
+let currentChart = null;
+let selectedCoins = [];
+
+// Load chart data
+async function loadChartData(timeframe = '1d') {
+    try {
+        // Get user's selected coins
+        const response = await fetch('/api/real-time-data');
+        const data = await response.json();
+        
+        console.log('Real-time data response:', data);
+        
+        if (!data || Object.keys(data).length === 0) {
+            document.getElementById('chartContainer').innerHTML = `
+                <div class="text-center py-5">
+                    <i class="fas fa-chart-line fa-3x text-muted mb-3"></i>
+                    <h5 class="text-muted">No Charts Available</h5>
+                    <p class="text-muted">Select cryptocurrencies in settings to view charts</p>
+                    <a href="{{ url_for('settings') }}" class="btn btn-primary">
+                        <i class="fas fa-cog me-2"></i>Configure Settings
+                    </a>
+                </div>
+            `;
+            return;
+        }
+        
+        selectedCoins = Object.keys(data);
+        console.log('Selected coins:', selectedCoins);
+        
+        // Load chart for first coin
+        if (selectedCoins.length > 0) {
+            await loadSingleChart(selectedCoins[0], timeframe);
+        }
+        
+    } catch (error) {
+        console.error('Error loading chart data:', error);
+        document.getElementById('chartContainer').innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                <h5 class="text-warning">Chart Error</h5>
+                <p class="text-muted">Unable to load chart data</p>
+                <button onclick="loadChartData()" class="btn btn-outline-primary">
+                    <i class="fas fa-sync-alt me-2"></i>Retry
+                </button>
+            </div>
+        `;
+    }
+}
+
+// Load single chart
+async function loadSingleChart(coinId, timeframe) {
+    try {
+        console.log(`Loading chart for coin: ${coinId}, timeframe: ${timeframe}`);
+        
+        // Validate coin ID
+        if (!coinId || coinId === 'message' || coinId === 'error') {
+            throw new Error(`Invalid coin ID: ${coinId}`);
+        }
+        
+        const response = await fetch(`/api/chart-data/${coinId}?timeframe=${timeframe}`);
+        const data = await response.json();
+        
+        if (data.error) {
+            throw new Error(data.error);
+        }
+        
+        // Create simple candlestick chart using Canvas
+        createCandlestickChart(data, coinId);
+        
+    } catch (error) {
+        console.error('Error loading single chart:', error);
+        document.getElementById('chartContainer').innerHTML = `
+            <div class="text-center py-5">
+                <i class="fas fa-exclamation-triangle fa-3x text-warning mb-3"></i>
+                <h5 class="text-warning">Chart Error</h5>
+                <p class="text-muted">Unable to load chart for ${coinId}</p>
+                <p class="text-muted small">${error.message}</p>
+                <button onclick="loadChartData()" class="btn btn-outline-primary">
+                    <i class="fas fa-sync-alt me-2"></i>Retry
+                </button>
+            </div>
+        `;
+    }
+}
+
+// Create candlestick chart using Canvas
+function createCandlestickChart(data, coinId) {
+    const container = document.getElementById('chartContainer');
+    const { coin_info, candlesticks } = data;
+    
+    // Clear container
+    container.innerHTML = `
+        <div class="d-flex justify-content-between align-items-center mb-3">
+            <h6 class="mb-0">
+                <i class="fas fa-coins me-2"></i>${coin_info.name} (${coin_info.symbol})
+            </h6>
+            <div class="text-end">
+                <div class="h5 mb-0">$${coin_info.current_price.toLocaleString()}</div>
+                <small class="text-muted">Threshold: $${coin_info.threshold_price.toLocaleString()}</small>
+            </div>
+        </div>
+        <canvas id="candlestickChart" width="800" height="300"></canvas>
+    `;
+    
+    const canvas = document.getElementById('candlestickChart');
+    const ctx = canvas.getContext('2d');
+    
+    // Chart dimensions
+    const padding = 40;
+    const chartWidth = canvas.width - 2 * padding;
+    const chartHeight = canvas.height - 2 * padding;
+    
+    // Find min/max prices
+    const prices = candlesticks.map(c => [c.high, c.low]).flat();
+    const minPrice = Math.min(...prices);
+    const maxPrice = Math.max(...prices);
+    const priceRange = maxPrice - minPrice;
+    
+    // Draw candlesticks
+    const candleWidth = chartWidth / candlesticks.length * 0.8;
+    const candleSpacing = chartWidth / candlesticks.length;
+    
+    candlesticks.forEach((candle, index) => {
+        const x = padding + index * candleSpacing + candleSpacing * 0.1;
+        const yHigh = padding + ((maxPrice - candle.high) / priceRange) * chartHeight;
+        const yLow = padding + ((maxPrice - candle.low) / priceRange) * chartHeight;
+        const yOpen = padding + ((maxPrice - candle.open) / priceRange) * chartHeight;
+        const yClose = padding + ((maxPrice - candle.close) / priceRange) * chartHeight;
+        
+        // Determine color (green for up, red for down)
+        const isUp = candle.close > candle.open;
+        const color = isUp ? '#28a745' : '#dc3545';
+        
+        // Draw wick
+        ctx.strokeStyle = color;
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        ctx.moveTo(x + candleWidth/2, yHigh);
+        ctx.lineTo(x + candleWidth/2, yLow);
+        ctx.stroke();
+        
+        // Draw body
+        ctx.fillStyle = color;
+        const bodyTop = Math.min(yOpen, yClose);
+        const bodyHeight = Math.abs(yClose - yOpen);
+        ctx.fillRect(x, bodyTop, candleWidth, Math.max(bodyHeight, 1));
+        
+        // Draw border
+        ctx.strokeStyle = color;
+        ctx.strokeRect(x, bodyTop, candleWidth, Math.max(bodyHeight, 1));
+    });
+    
+    // Draw threshold line
+    const thresholdY = padding + ((maxPrice - coin_info.threshold_price) / priceRange) * chartHeight;
+    ctx.strokeStyle = '#ffc107';
+    ctx.lineWidth = 2;
+    ctx.setLineDash([5, 5]);
+    ctx.beginPath();
+    ctx.moveTo(padding, thresholdY);
+    ctx.lineTo(padding + chartWidth, thresholdY);
+    ctx.stroke();
+    ctx.setLineDash([]);
+    
+    // Draw axes
+    ctx.strokeStyle = '#6c757d';
+    ctx.lineWidth = 1;
+    
+    // Y-axis
+    ctx.beginPath();
+    ctx.moveTo(padding, padding);
+    ctx.lineTo(padding, padding + chartHeight);
+    ctx.stroke();
+    
+    // X-axis
+    ctx.beginPath();
+    ctx.moveTo(padding, padding + chartHeight);
+    ctx.lineTo(padding + chartWidth, padding + chartHeight);
+    ctx.stroke();
+    
+    // Add price labels
+    ctx.fillStyle = '#6c757d';
+    ctx.font = '12px Arial';
+    ctx.textAlign = 'right';
+    
+    // Y-axis labels
+    for (let i = 0; i <= 5; i++) {
+        const price = minPrice + (priceRange * i / 5);
+        const y = padding + chartHeight - (i * chartHeight / 5);
+        ctx.fillText('$' + price.toFixed(2), padding - 10, y + 4);
+    }
+    
+    // Add threshold label
+    ctx.fillStyle = '#ffc107';
+    ctx.font = 'bold 12px Arial';
+    ctx.fillText('Threshold', padding + chartWidth - 60, thresholdY - 5);
+}
+
+// Timeframe button handlers
+document.addEventListener('DOMContentLoaded', function() {
+    // Load initial chart
+    loadChartData('1d');
+    
+    // Add timeframe button handlers
+    document.querySelectorAll('[data-timeframe]').forEach(button => {
+        button.addEventListener('click', function() {
+            // Update active button
+            document.querySelectorAll('[data-timeframe]').forEach(btn => btn.classList.remove('active'));
+            this.classList.add('active');
+            
+            // Load chart with new timeframe
+            const timeframe = this.dataset.timeframe;
+            loadChartData(timeframe);
+        });
+    });
+});
+
+// Real-time Auto-Save and Live Updates
+let autoSaveTimeout;
+const AUTO_SAVE_DELAY = 2000; // 2 seconds delay for dashboard
+
+function autoSaveDashboardData(data) {
+    clearTimeout(autoSaveTimeout);
+    
+    autoSaveTimeout = setTimeout(() => {
+        // Validate data before sending
+        if (!data || typeof data !== 'object') {
+            console.error('Invalid data for auto-save:', data);
+            return;
+        }
+        
+        // Ensure required fields are present
+        const validData = {
+            interaction: data.interaction || 'unknown',
+            timestamp: data.timestamp || new Date().toISOString(),
+            user_id: data.user_id || {{ user.id }},
+            page: data.page || 'dashboard'
+        };
+        
+        // Send via WebSocket for real-time updates
+        if (typeof socket !== 'undefined') {
+            socket.emit('dashboard_data_update', validData);
+        }
+        
+        // Also send via API as backup
+        fetch('/api/auto-save-dashboard-no-csrf', {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json',
+                'X-Requested-With': 'XMLHttpRequest'
+            },
+            body: JSON.stringify(validData)
+        })
+        .then(response => {
+            if (!response.ok) {
+                throw new Error(`HTTP ${response.status}: ${response.statusText}`);
+            }
+            return response.json();
+        })
+        .then(result => {
+            if (result.success) {
+                showAutoSaveIndicator('Dashboard data auto-saved');
+            } else {
+                console.warn('Auto-save warning:', result.error);
+            }
+        })
+        .catch(error => {
+            console.error('Dashboard auto-save error:', error);
+            // Don't show error to user for auto-save failures
+        });
+    }, AUTO_SAVE_DELAY);
+}
+
+function showAutoSaveIndicator(message) {
+    // Create or update auto-save indicator
+    let indicator = document.getElementById('autoSaveIndicator');
+    if (!indicator) {
+        indicator = document.createElement('div');
+        indicator.id = 'autoSaveIndicator';
+        indicator.className = 'position-fixed top-0 end-0 p-3';
+        indicator.style.zIndex = '9999';
+        document.body.appendChild(indicator);
+    }
+    
+    indicator.innerHTML = `
+        <div class="alert alert-info alert-dismissible fade show" role="alert">
+            <i class="fas fa-sync-alt me-2"></i>
+            ${message}
+            <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+        </div>
+    `;
+    
+    // Auto-hide after 2 seconds
+    setTimeout(() => {
+        if (indicator) {
+            indicator.innerHTML = '';
+        }
+    }, 2000);
+}
+
+// Enhanced WebSocket event listeners for real-time updates
+if (typeof socket !== 'undefined') {
+    // Listen for user data updates
+    socket.on('user_updated', function(data) {
+        console.log('User data updated:', data);
+        if (data.user_id === {{ user.id }}) {
+            showAutoSaveIndicator('Your profile has been updated');
+        }
+    });
+    
+    // Listen for coin price updates
+    socket.on('coin_price_updated', function(data) {
+        console.log('Coin price updated:', data);
+        // Update the market data display
+        updateMarketDisplay();
+        showAutoSaveIndicator(`${data.symbol} price updated to $${data.current_price}`);
+    });
+    
+    // Listen for coin selection updates
+    socket.on('coin_selection_updated', function(data) {
+        console.log('Coin selection updated:', data);
+        if (data.user_id === {{ user.id }}) {
+            showAutoSaveIndicator(`Coin selection updated for ${data.coin_id}`);
+            // Refresh market data
+            loadMarketData();
+        }
+    });
+    
+    // Listen for live data updates
+    socket.on('live_data_update', function(data) {
+        console.log('Live data update received:', data);
+        if (data.user_id === {{ user.id }}) {
+            // Update dashboard stats
+            updateDashboardStats(data);
+        }
+    });
+    
+    // Listen for ESP32 connection changes
+    socket.on('esp32_connection_changed', function(data) {
+        console.log('ESP32 connection changed:', data);
+        if (data.user_id === {{ user.id }}) {
+            updateESP32Status(data.connected);
+            showAutoSaveIndicator(`ESP32 ${data.connected ? 'connected' : 'disconnected'}`);
+        }
+    });
+}
+
+function updateDashboardStats(data) {
+    // Update ESP32 status
+    if (data.esp32_connected !== undefined) {
+        updateESP32Status(data.esp32_connected);
+    }
+    
+    // Update coin counts if available
+    if (data.total_coins !== undefined) {
+        document.getElementById('totalCoins').textContent = data.total_coins;
+    }
+    
+    if (data.invested_coins !== undefined) {
+        document.getElementById('investedCoins').textContent = data.invested_coins;
+    }
+}
+
+// Auto-save dashboard interactions
+function trackDashboardInteraction(interaction) {
+    // Validate interaction parameter
+    if (!interaction || typeof interaction !== 'string') {
+        console.error('Invalid interaction parameter:', interaction);
+        return;
+    }
+    
+    const data = {
+        user_id: {{ user.id }},
+        interaction: interaction,
+        timestamp: new Date().toISOString(),
+        page: 'dashboard'
+    };
+    
+    autoSaveDashboardData(data);
+}
+
+// Track user interactions for auto-save
+document.addEventListener('DOMContentLoaded', function() {
+    // Track chart interactions
+    document.querySelectorAll('[data-timeframe]').forEach(button => {
+        button.addEventListener('click', function() {
+            trackDashboardInteraction(`chart_timeframe_${this.dataset.timeframe}`);
+        });
+    });
+    
+    // Track ESP32 connection checks
+    const esp32CheckBtn = document.getElementById('refreshConnection');
+    if (esp32CheckBtn) {
+        esp32CheckBtn.addEventListener('click', function() {
+            trackDashboardInteraction('esp32_connection_check');
+        });
+    }
+    
+    // Track settings navigation
+    const settingsBtn = document.getElementById('openSettings');
+    if (settingsBtn) {
+        settingsBtn.addEventListener('click', function() {
+            trackDashboardInteraction('navigate_to_settings');
+        });
+    }
+    
+    // Request live updates from server
+    if (typeof socket !== 'undefined') {
+        socket.emit('request_live_updates');
+    }
+    
+    // Set up periodic dashboard refresh
+    setInterval(() => {
+        // Auto-save current dashboard state
+        const dashboardState = {
+            user_id: {{ user.id }},
+            timestamp: new Date().toISOString(),
+            esp32_connected: esp32Connected,
+            market_data_loaded: document.getElementById('marketData').children.length > 0
+        };
+        
+        autoSaveDashboardData(dashboardState);
+    }, 30000); // Every 30 seconds
+});
+
+// Enhanced market data loading with auto-save
+function loadMarketData() {
+    fetch('/api/real-time-data')
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.length > 0) {
+                updateMarketDisplay(data);
+                trackDashboardInteraction('market_data_loaded');
+            } else {
+                showNoDataMessage();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading market data:', error);
+            showErrorMessage();
+            trackDashboardInteraction('market_data_error');
+        });
+}
+
+// Enhanced chart loading with auto-save
+function loadChartData(timeframe) {
+    // Get selected coins first
+    fetch('/api/real-time-data')
+        .then(response => response.json())
+        .then(data => {
+            if (data && data.length > 0) {
+                const coinId = data[0].coin_id;
+                loadSingleChart(coinId, timeframe);
+                trackDashboardInteraction(`chart_loaded_${timeframe}_${coinId}`);
+            } else {
+                showNoDataMessage();
+            }
+        })
+        .catch(error => {
+            console.error('Error loading chart data:', error);
+            trackDashboardInteraction('chart_error_' + (error.message || 'unknown'));
+        });
+}
+</script>
+{% endblock %}

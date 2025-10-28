@@ -1,0 +1,400 @@
+{% extends "base.html" %}
+
+{% block title %}Admin Panel - IoT Stock Monitor{% endblock %}
+
+{% block content %}
+<div class="row">
+    <div class="col-12">
+        <div class="main-container">
+            <div class="text-center mb-4">
+                <h2 class="text-gradient">
+                    <i class="fas fa-shield-alt me-2"></i>Admin Panel
+                </h2>
+                <p class="text-muted">Manage users, monitor system activity, and view analytics</p>
+            </div>
+            
+            <!-- Admin Stats -->
+            <div class="row mb-5">
+                <div class="col-md-3 mb-3">
+                    <div class="stats-card">
+                        <div class="stats-number">{{ users|length }}</div>
+                        <div class="stats-label">Total Users</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stats-card">
+                        <div class="stats-number">{{ users|selectattr('esp32_connected')|list|length }}</div>
+                        <div class="stats-label">Active ESP32s</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stats-card">
+                        <div class="stats-number">{{ activities|length }}</div>
+                        <div class="stats-label">Recent Activities</div>
+                    </div>
+                </div>
+                <div class="col-md-3 mb-3">
+                    <div class="stats-card">
+                        <div class="stats-number">{{ market_data|length }}</div>
+                        <div class="stats-label">Market Records</div>
+                    </div>
+                </div>
+            </div>
+            
+            <!-- Tabs -->
+            <ul class="nav nav-tabs" id="adminTabs" role="tablist">
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link active" id="users-tab" data-bs-toggle="tab" data-bs-target="#users" type="button" role="tab">
+                        <i class="fas fa-users me-2"></i>Users
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="activities-tab" data-bs-toggle="tab" data-bs-target="#activities" type="button" role="tab">
+                        <i class="fas fa-history me-2"></i>Activities
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="market-tab" data-bs-toggle="tab" data-bs-target="#market" type="button" role="tab">
+                        <i class="fas fa-chart-line me-2"></i>Market Data
+                    </button>
+                </li>
+                <li class="nav-item" role="presentation">
+                    <button class="nav-link" id="system-tab" data-bs-toggle="tab" data-bs-target="#system" type="button" role="tab">
+                        <i class="fas fa-cogs me-2"></i>System
+                    </button>
+                </li>
+            </ul>
+            
+            <div class="tab-content" id="adminTabsContent">
+                <!-- Users Tab -->
+                <div class="tab-pane fade show active" id="users" role="tabpanel">
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-users me-2"></i>User Management
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>ID</th>
+                                            <th>Username</th>
+                                            <th>Email</th>
+                                            <th>Role</th>
+                                            <th>ESP32 Status</th>
+                                            <th>Last Login</th>
+                                            <th>Created</th>
+                                            <th>Actions</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for user in users %}
+                                        <tr>
+                                            <td>{{ user.id }}</td>
+                                            <td>
+                                                <strong>{{ user.username }}</strong>
+                                                {% if user.id == current_user.id %}
+                                                    <span class="badge bg-primary ms-1">You</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ user.email }}</td>
+                                            <td>
+                                                {% if user.is_admin %}
+                                                    <span class="badge bg-danger">Admin</span>
+                                                {% else %}
+                                                    <span class="badge bg-secondary">User</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if user.esp32_connected %}
+                                                    <span class="badge bg-success">
+                                                        <i class="fas fa-microchip me-1"></i>Connected
+                                                    </span>
+                                                {% else %}
+                                                    <span class="badge bg-danger">
+                                                        <i class="fas fa-microchip me-1"></i>Disconnected
+                                                    </span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                {% if user.last_login %}
+                                                    {{ user.last_login.strftime('%Y-%m-%d %H:%M') }}
+                                                {% else %}
+                                                    <span class="text-muted">Never</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>{{ user.created_at.strftime('%Y-%m-%d') }}</td>
+                                            <td>
+                                                <div class="btn-group btn-group-sm">
+                                                    <button class="btn btn-outline-info" onclick="viewUserDetails({{ user.id }})">
+                                                        <i class="fas fa-eye"></i>
+                                                    </button>
+                                                    {% if not user.is_admin and user.id != current_user.id %}
+                                                    <button class="btn btn-outline-warning" onclick="toggleAdmin({{ user.id }})">
+                                                        <i class="fas fa-shield-alt"></i>
+                                                    </button>
+                                                    <button class="btn btn-outline-danger" onclick="deleteUser({{ user.id }})">
+                                                        <i class="fas fa-trash"></i>
+                                                    </button>
+                                                    {% endif %}
+                                                </div>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Activities Tab -->
+                <div class="tab-pane fade" id="activities" role="tabpanel">
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-history me-2"></i>Recent Activities
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Time</th>
+                                            <th>User</th>
+                                            <th>Activity</th>
+                                            <th>Description</th>
+                                            <th>IP Address</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for activity in activities %}
+                                        <tr>
+                                            <td>{{ activity.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                            <td>
+                                                {% set user = users|selectattr('id', 'equalto', activity.user_id)|first %}
+                                                {% if user %}
+                                                    <strong>{{ user.username }}</strong>
+                                                {% else %}
+                                                    <span class="text-muted">Unknown</span>
+                                                {% endif %}
+                                            </td>
+                                            <td>
+                                                <span class="badge bg-{{ 'success' if activity.activity_type == 'login' else 'info' if activity.activity_type == 'register' else 'warning' }}">
+                                                    {{ activity.activity_type.replace('_', ' ').title() }}
+                                                </span>
+                                            </td>
+                                            <td>{{ activity.description }}</td>
+                                            <td>
+                                                <code>{{ activity.ip_address }}</code>
+                                            </td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- Market Data Tab -->
+                <div class="tab-pane fade" id="market" role="tabpanel">
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-chart-line me-2"></i>Market Data
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="table-responsive">
+                                <table class="table table-hover">
+                                    <thead>
+                                        <tr>
+                                            <th>Coin</th>
+                                            <th>Price</th>
+                                            <th>24h Change</th>
+                                            <th>Timestamp</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {% for data in market_data %}
+                                        <tr>
+                                            <td>
+                                                <strong>{{ data.coin_id.upper() }}</strong>
+                                            </td>
+                                            <td>${{ "%.2f"|format(data.price) }}</td>
+                                            <td>
+                                                <span class="{{ 'text-success' if data.change_24h > 0 else 'text-danger' if data.change_24h < 0 else 'text-muted' }}">
+                                                    {{ '+' if data.change_24h > 0 else '' }}{{ "%.2f"|format(data.change_24h) }}%
+                                                </span>
+                                            </td>
+                                            <td>{{ data.timestamp.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+                                        </tr>
+                                        {% endfor %}
+                                    </tbody>
+                                </table>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+                
+                <!-- System Tab -->
+                <div class="tab-pane fade" id="system" role="tabpanel">
+                    <div class="card mt-3">
+                        <div class="card-header">
+                            <h5 class="mb-0">
+                                <i class="fas fa-cogs me-2"></i>System Information
+                            </h5>
+                        </div>
+                        <div class="card-body">
+                            <div class="row">
+                                <div class="col-md-6">
+                                    <h6>Server Status</h6>
+                                    <ul class="list-unstyled">
+                                        <li><i class="fas fa-check-circle text-success me-2"></i>Flask Application: Running</li>
+                                        <li><i class="fas fa-check-circle text-success me-2"></i>Database: Connected</li>
+                                        <li><i class="fas fa-check-circle text-success me-2"></i>WebSocket: Active</li>
+                                        <li><i class="fas fa-check-circle text-success me-2"></i>API Connection: OK</li>
+                                    </ul>
+                                    
+                                    <h6 class="mt-4">Database Statistics</h6>
+                                    <ul class="list-unstyled">
+                                        <li><strong>Total Users:</strong> {{ users|length }}</li>
+                                        <li><strong>Active ESP32s:</strong> {{ users|selectattr('esp32_connected')|list|length }}</li>
+                                        <li><strong>Market Records:</strong> {{ market_data|length }}</li>
+                                        <li><strong>Activity Logs:</strong> {{ activities|length }}</li>
+                                    </ul>
+                                </div>
+                                
+                                <div class="col-md-6">
+                                    <h6>System Actions</h6>
+                                    <div class="d-grid gap-2">
+                                        <button class="btn btn-outline-primary" onclick="refreshSystemData()">
+                                            <i class="fas fa-sync-alt me-2"></i>Refresh System Data
+                                        </button>
+                                        <button class="btn btn-outline-warning" onclick="clearOldData()">
+                                            <i class="fas fa-trash me-2"></i>Clear Old Market Data
+                                        </button>
+                                        <button class="btn btn-outline-info" onclick="exportSystemData()">
+                                            <i class="fas fa-download me-2"></i>Export System Data
+                                        </button>
+                                        <button class="btn btn-outline-danger" onclick="restartSystem()">
+                                            <i class="fas fa-power-off me-2"></i>Restart System
+                                        </button>
+                                    </div>
+                                    
+                                    <h6 class="mt-4">API Status</h6>
+                                    <div id="apiStatus">
+                                        <div class="d-flex justify-content-between align-items-center">
+                                            <span>CoinGecko API:</span>
+                                            <span class="badge bg-success" id="coingeckoStatus">Connected</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+{% endblock %}
+
+{% block extra_js %}
+<script>
+// Admin functions
+function viewUserDetails(userId) {
+    showNotification(`Viewing details for user ${userId}`, 'info');
+    // This would open a modal with user details
+}
+
+function toggleAdmin(userId) {
+    if (confirm('Are you sure you want to toggle admin privileges for this user?')) {
+        showNotification(`Toggling admin privileges for user ${userId}`, 'warning');
+        // This would make an API call to toggle admin status
+    }
+}
+
+function deleteUser(userId) {
+    if (confirm('Are you sure you want to delete this user? This action cannot be undone.')) {
+        showNotification(`Deleting user ${userId}`, 'danger');
+        // This would make an API call to delete the user
+    }
+}
+
+function refreshSystemData() {
+    const button = event.target;
+    const originalText = button.innerHTML;
+    button.innerHTML = '<div class="loading-spinner me-2"></div>Refreshing...';
+    button.disabled = true;
+    
+    setTimeout(() => {
+        button.innerHTML = originalText;
+        button.disabled = false;
+        showNotification('System data refreshed!', 'success');
+        location.reload();
+    }, 2000);
+}
+
+function clearOldData() {
+    if (confirm('Are you sure you want to clear old market data? This will remove records older than 7 days.')) {
+        showNotification('Clearing old market data...', 'warning');
+        // This would make an API call to clear old data
+    }
+}
+
+function exportSystemData() {
+    showNotification('Exporting system data...', 'info');
+    // This would trigger a data export
+}
+
+function restartSystem() {
+    if (confirm('Are you sure you want to restart the system? This will disconnect all users temporarily.')) {
+        showNotification('Restarting system...', 'danger');
+        // This would restart the system
+    }
+}
+
+function showNotification(message, type) {
+    const notification = document.createElement('div');
+    notification.className = `alert alert-${type} alert-dismissible fade show position-fixed`;
+    notification.style.cssText = 'top: 20px; right: 20px; z-index: 9999; min-width: 300px;';
+    notification.innerHTML = `
+        ${message}
+        <button type="button" class="btn-close" data-bs-dismiss="alert"></button>
+    `;
+    
+    document.body.appendChild(notification);
+    
+    setTimeout(() => {
+        if (notification.parentNode) {
+            notification.parentNode.removeChild(notification);
+        }
+    }, 3000);
+}
+
+// Check API status on page load
+document.addEventListener('DOMContentLoaded', function() {
+    checkAPIStatus();
+});
+
+async function checkAPIStatus() {
+    try {
+        const response = await fetch('/api/coins');
+        if (response.ok) {
+            document.getElementById('coingeckoStatus').textContent = 'Connected';
+            document.getElementById('coingeckoStatus').className = 'badge bg-success';
+        } else {
+            throw new Error('API request failed');
+        }
+    } catch (error) {
+        document.getElementById('coingeckoStatus').textContent = 'Disconnected';
+        document.getElementById('coingeckoStatus').className = 'badge bg-danger';
+    }
+}
+</script>
+{% endblock %}

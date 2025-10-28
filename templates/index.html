@@ -1,0 +1,206 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>IoT Stock Monitor</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/css/bootstrap.min.css" rel="stylesheet">
+    <link href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.0.0/css/all.min.css" rel="stylesheet">
+    <style>
+        body {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+        }
+        
+        .main-container {
+            background: rgba(255, 255, 255, 0.95);
+            border-radius: 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+            margin: 20px auto;
+            padding: 30px;
+        }
+        
+        .status-card {
+            border-radius: 15px;
+            padding: 20px;
+            margin: 10px 0;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: transform 0.3s ease;
+        }
+        
+        .status-card:hover {
+            transform: translateY(-5px);
+        }
+        
+        .led-indicator {
+            width: 20px;
+            height: 20px;
+            border-radius: 50%;
+            display: inline-block;
+            margin-right: 10px;
+            animation: pulse 2s infinite;
+        }
+        
+        .led-red { background-color: #ff4757; }
+        .led-green { background-color: #2ed573; }
+        .led-blue { background-color: #3742fa; }
+        .led-off { background-color: #ddd; animation: none; }
+        
+        @keyframes pulse {
+            0% { opacity: 1; }
+            50% { opacity: 0.5; }
+            100% { opacity: 1; }
+        }
+        
+        .coin-card {
+            background: white;
+            border-radius: 10px;
+            padding: 15px;
+            margin: 10px 0;
+            border-left: 4px solid #667eea;
+            box-shadow: 0 3px 10px rgba(0,0,0,0.1);
+        }
+        
+        .price-positive { color: #2ed573; }
+        .price-negative { color: #ff4757; }
+        .price-neutral { color: #666; }
+        
+        .esp32-status {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            padding: 10px 20px;
+            border-radius: 25px;
+            color: white;
+            font-weight: bold;
+        }
+        
+        .esp32-connected { background-color: #2ed573; }
+        .esp32-disconnected { background-color: #ff4757; }
+        
+        .threshold-input {
+            border-radius: 10px;
+            border: 2px solid #667eea;
+            padding: 10px;
+            font-size: 16px;
+        }
+        
+        .btn-custom {
+            border-radius: 25px;
+            padding: 10px 30px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+        }
+        
+        .btn-custom:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 5px 15px rgba(0,0,0,0.2);
+        }
+    </style>
+</head>
+<body>
+    <div class="container-fluid">
+        <!-- ESP32 Status Indicator -->
+        <div id="esp32Status" class="esp32-status esp32-disconnected">
+            <i class="fas fa-microchip"></i> ESP32: Disconnected
+        </div>
+        
+        <div class="row justify-content-center">
+            <div class="col-lg-10">
+                <div class="main-container">
+                    <div class="text-center mb-4">
+                        <h1 class="display-4 text-primary">
+                            <i class="fas fa-chart-line"></i> IoT Stock Monitor
+                        </h1>
+                        <p class="lead">Real-time cryptocurrency monitoring with hardware visualization</p>
+                    </div>
+                    
+                    <!-- Configuration Panel -->
+                    <div class="row">
+                        <div class="col-md-6">
+                            <div class="status-card bg-light">
+                                <h4><i class="fas fa-cog"></i> Configuration</h4>
+                                
+                                <div class="mb-3">
+                                    <label for="threshold" class="form-label">Threshold Percentage (%)</label>
+                                    <input type="number" class="form-control threshold-input" id="threshold" 
+                                           placeholder="Enter threshold (e.g., 5)" step="0.1" min="0">
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="coinSelect" class="form-label">Select Cryptocurrencies</label>
+                                    <select class="form-select" id="coinSelect" multiple>
+                                        <option value="">Loading coins...</option>
+                                    </select>
+                                    <small class="text-muted">Hold Ctrl/Cmd to select multiple coins</small>
+                                </div>
+                                
+                                <div class="mb-3">
+                                    <label for="investedCoins" class="form-label">Invested Coins (Blue LED)</label>
+                                    <select class="form-select" id="investedCoins" multiple>
+                                        <option value="">Select invested coins...</option>
+                                    </select>
+                                    <small class="text-muted">These will show blue LED regardless of price movement</small>
+                                </div>
+                                
+                                <button class="btn btn-primary btn-custom w-100" onclick="saveSettings()">
+                                    <i class="fas fa-save"></i> Save Configuration
+                                </button>
+                            </div>
+                        </div>
+                        
+                        <div class="col-md-6">
+                            <div class="status-card bg-light">
+                                <h4><i class="fas fa-info-circle"></i> LED Logic</h4>
+                                <div class="mb-2">
+                                    <span class="led-indicator led-red"></span>
+                                    <strong>Red LED:</strong> Price drops below threshold
+                                </div>
+                                <div class="mb-2">
+                                    <span class="led-indicator led-green"></span>
+                                    <strong>Green LED:</strong> Price rises above threshold
+                                </div>
+                                <div class="mb-2">
+                                    <span class="led-indicator led-blue"></span>
+                                    <strong>Blue LED:</strong> You have invested in this coin
+                                </div>
+                                <div class="mb-2">
+                                    <span class="led-indicator led-off"></span>
+                                    <strong>No LED:</strong> Price change within threshold
+                                </div>
+                                
+                                <hr>
+                                
+                                <h5><i class="fas fa-microchip"></i> Hardware Status</h5>
+                                <div id="hardwareStatus">
+                                    <p><i class="fas fa-circle text-danger"></i> ESP32: Not Connected</p>
+                                    <p><i class="fas fa-lightbulb text-muted"></i> LED: Off</p>
+                                    <p><i class="fas fa-volume-up text-muted"></i> Buzzer: Off</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                    
+                    <!-- Market Data Display -->
+                    <div class="row mt-4">
+                        <div class="col-12">
+                            <div class="status-card bg-light">
+                                <h4><i class="fas fa-chart-bar"></i> Real-time Market Data</h4>
+                                <div id="marketData">
+                                    <p class="text-muted">Configure your settings above to start monitoring...</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    
+    <!-- Scripts -->
+    <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.1.3/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/socket.io/4.0.1/socket.io.js"></script>
+    <script src="{{ url_for('static', filename='script.js') }}"></script>
+</body>
+</html>
